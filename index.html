@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+      #startButton {
+        padding: 60px 40px;
+        margin: 15px;
+        font-size: 70px;
+        background-color:#ffff00;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        color: #000;
+        font-weight: bold;
+      }
+      canvas {
+        display: none; /* 초기 화면에서 캔버스를 숨김 */
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 초기 화면 버튼 -->
+    <button id="startButton">このボタンを押すと、<br>パンの音声説明が流れます。</button>
+
+    <script>
+      let img;
+      let waveHeight = []; // 각 선의 높이를 저장할 배열
+      let numBars = 20; // 선의 개수
+      let barWidth = 5; // 각 선의 너비
+      let startTime;
+      let sound; // 음성을 저장할 변수
+      let audioStarted = false; // 오디오 재생 상태 확인
+
+      function preload() {
+        img = loadImage('md.png'); // 'md.png' 이미지를 로드
+        sound = loadSound('voice.mp3'); // 음성 파일 로드
+      }
+
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+        background(0); // 배경을 검은색으로 설정
+        textAlign(CENTER, CENTER); // 텍스트를 중앙 정렬
+        fill(255); // 텍스트 색상을 흰색으로 설정
+
+        // 초기 파동 높이 랜덤 설정
+        for (let i = 0; i < numBars; i++) {
+          waveHeight.push(random(5, 25)); // 파동 높이 초기화
+        }
+
+        // 버튼 클릭 이벤트
+        const startButton = document.getElementById("startButton");
+        startButton.addEventListener("click", () => {
+          startButton.style.display = "none"; // 버튼 숨김
+          canvas.style.display = "block"; // 캔버스를 표시
+
+          // 음성을 재생
+          userStartAudio()
+            .then(() => {
+              console.log("Audio permissions granted");
+              sound.setVolume(1); // 볼륨 0으로 설정
+              sound.play(); // 재생 시작
+              setTimeout(() => {
+                sound.setVolume(1, 0); // 0.5초에 걸쳐 볼륨 증가
+              }, 500);
+              audioStarted = true;
+            })
+            .catch((err) => {
+              console.error("Audio failed to start:", err);
+            });
+
+          startTime = millis(); // 애니메이션 시작 시간 기록
+        });
+      }
+
+      function draw() {
+        clear();
+        background(0);
+        imageMode(CENTER); // 이미지를 중심 기준으로 설정
+
+        // 이미지 크기를 2배 작게 표시
+        let imgWidth = img.width / 2;
+        let imgHeight = img.height / 2;
+        image(img, width / 2, height / 5, imgWidth, imgHeight);
+
+        // 첫 번째 텍스트 (큰 크기, 볼드)
+        textSize(100);
+        fill(255, 255, 255);
+        textStyle(BOLD); // 볼드 적용
+        text("レモンマドレーヌ", width / 2, height / 2.5 + imgHeight / 2 + 50);
+
+        // 두 번째 텍스트 (작은 크기, 볼드 해제)
+        textSize(70); // 작은 크기
+        fill(255, 255, 255);
+        textStyle(NORMAL); // 볼드 해제
+        text(
+          "しっとりとした柔らかい\n食感のデザート\nさわやかなレモンの風味を\n加えました。",
+          width / 2,
+          height / 1.8 + imgHeight / 2 + 100
+        );
+
+        // 파동 애니메이션
+        drawWave();
+      }
+
+      function drawWave() {
+        let currentTime = millis(); // 현재 시간
+        let elapsedTime = currentTime - startTime; // 경과 시간
+
+        if (elapsedTime > 5500) {
+          // 5.5초 이후에는 애니메이션 멈춤
+          return;
+        }
+
+        let heightFactor = 3;
+        if (elapsedTime > 4000) {
+          // 5초 이후부터 잦아들기 시작
+          heightFactor = map(elapsedTime, 5000, 5500, 1, 0); // 높이 감소 속도 조정
+        }
+
+        let centerX = width / 2; // 파동 중심
+        let centerY = height / 4 + 200; // 텍스트 아래로 파동 위치 이동
+        let totalWidth = numBars * barWidth * 2; // 파동 전체 너비
+        let startX = centerX - totalWidth / 2; // 첫 번째 선의 시작 X 좌표
+
+        noStroke();
+        fill(255, 255, 0); // 노란색 선
+
+        for (let i = 0; i < numBars; i++) {
+          let x = startX + i * barWidth * 2; // 각 선의 X 좌표
+          let h =
+            (waveHeight[i] + sin(frameCount * 0.2 + i * 0.5) * 10) *
+            heightFactor; // 파동 높이 애니메이션 감소
+          rect(x, centerY - h / 2, barWidth, h, barWidth / 2); // 둥근 모서리
+        }
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight); // 화면 크기 변화에 따라 캔버스 조정
+      }
+    </script>
+  </body>
+</html>
